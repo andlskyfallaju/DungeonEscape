@@ -2,8 +2,8 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import javax.imageio.ImageIO;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class GamePanel extends JPanel implements Runnable {
     KeyHandler keyH = new KeyHandler();
@@ -15,10 +15,17 @@ public class GamePanel extends JPanel implements Runnable {
 
     public enum GameMode { CASUAL, ESCAPE }
     public GameMode currentMode = GameMode.CASUAL;
-    private List<Point> coins = new ArrayList<>();
-    private List<Point> powerups = new ArrayList<>();
+    private List<Point> coins = new CopyOnWriteArrayList<>();
+    private List<Point> powerups = new CopyOnWriteArrayList<>();
     public boolean exitLocked = false;
     public long slowTimer = 0; // Duration of slow-down effect in frames
+    
+    public List<Arrow> arrows = new CopyOnWriteArrayList<>();
+    public List<ExplosionTracker> explosionTrackers = new CopyOnWriteArrayList<>();
+    public List<Crystal> crystals = new CopyOnWriteArrayList<>();
+    public ArcherBoss archerBoss = null;
+    public boolean isBossLevel = false;
+    public int invincibilityFrames = 0;
 
     // Snapshot for "Same Level" restart logic
     int[][] initialMap;
@@ -58,9 +65,17 @@ public class GamePanel extends JPanel implements Runnable {
             @Override
             public void mousePressed(java.awt.event.MouseEvent e) {
                 if (gameOver || gameWon || isLifeLost) {
-                    double scaleFactor = (double)getWidth() / (maxScreenCol * tileSize);
-                    int mouseX = (int)(e.getX() / scaleFactor);
-                    int mouseY = (int)(e.getY() / scaleFactor);
+                    int logicalWidth = maxScreenCol * tileSize;
+                    int logicalHeight = maxScreenRow * tileSize;
+                    double scaleX = (double)getWidth() / logicalWidth;
+                    double scaleY = (double)getHeight() / logicalHeight;
+                    double scaleFactor = Math.min(scaleX, scaleY);
+                    
+                    int offsetX = (int)(getWidth() - logicalWidth * scaleFactor) / 2;
+                    int offsetY = (int)(getHeight() - logicalHeight * scaleFactor) / 2;
+
+                    int mouseX = (int)((e.getX() - offsetX) / scaleFactor);
+                    int mouseY = (int)((e.getY() - offsetY) / scaleFactor);
                     
                     if (menuBtnRect.contains(mouseX, mouseY)) {
                         JFrame frame = (JFrame) SwingUtilities.getWindowAncestor(GamePanel.this);
@@ -93,48 +108,73 @@ public class GamePanel extends JPanel implements Runnable {
     }
 
     private void generateLevel() {
-        // --- SCREEN INCREASE AFTER LEVEL 5 ---
-        if (level > 5) {
-            maxScreenCol = 20 + (level - 5) * 2;
-            maxScreenRow = 15 + (level - 5);
-            screenResize();
-        } else if (level == 1) {
-            maxScreenCol = 20;
-            maxScreenRow = 15;
+        // --- LOGICAL GRID LOCK ---
+        maxScreenCol = 20;
+        maxScreenRow = 15;
+        if (level == 1) {
             screenResize();
         }
 
         // Reset state for items
         coins.clear();
         powerups.clear();
+        arrows.clear();
+        explosionTrackers.clear();
+        crystals.clear();
+        archerBoss = null;
+        isBossLevel = false;
+        invincibilityFrames = 0;
         slowTimer = 0;
         exitLocked = (currentMode == GameMode.ESCAPE);
         isLifeLost = false;
+        
+        if (currentMode == GameMode.ESCAPE && level % 5 == 0) {
+            isBossLevel = true;
+        }
 
-        map.loadMap();
+        if (isBossLevel) {
+            map.loadArenaMap();
+        } else {
+            map.loadMap(level);
+        }
+        
         Point p = map.getRandomFreeTile();
         player.x = p.x * tileSize;
         player.y = p.y * tileSize;
 
-        Point e = map.placeExitFarFromPlayer(p.x, p.y);
-        map.ensurePathExists(p.x, p.y, e.x, e.y);
-
-        // --- SPAWN ITEMS (ESCAPE MODE) ---
-        if (currentMode == GameMode.ESCAPE) {
-            int coinCount = (level < 5) ? 3 : 4 + (level - 5) / 2;
+        Point e;
+        if (isBossLevel) {
+            e = map.placeExitFarFromPlayer(p.x, p.y);
+            
+            archerBoss = new ArcherBoss(this, (maxScreenCol/2) * tileSize, (maxScreenRow/2) * tileSize);
+            enemies = new Enemy[0]; // No standard ghosts
+            
+            int coinCount = 5; 
             for (int i = 0; i < coinCount; i++) {
-                coins.add(map.getRandomFreeTile());
+                Point pt = map.getRandomFreeTileFarFromAll(crystals, 5);
+                if (pt != null) {
+                    crystals.add(new Crystal(this, pt.x, pt.y));
+                }
+            }
+        } else {
+            e = map.placeExitFarFromPlayer(p.x, p.y);
+            map.ensurePathExists(p.x, p.y, e.x, e.y);
+
+            // --- SPAWN ITEMS (ESCAPE MODE) ---
+            if (currentMode == GameMode.ESCAPE) {
+                int coinCount = (level < 5) ? 3 : 4 + (level - 5) / 2;
+                for (int i = 0; i < coinCount; i++) {
+                    coins.add(map.getRandomFreeTile());
+                }
+                powerups.add(map.getRandomFreeTile());
             }
 
-            // Always 1 power-up per level in Escape Mode
-            powerups.add(map.getRandomFreeTile());
-        }
-
-        int enemyCount = Math.min(12, 2 + level + (maxScreenCol / 10));
-        enemies = new Enemy[enemyCount];
-        for(int i = 0; i < enemies.length; i++) {
-            Point ep = map.getRandomFreeTileFarFrom(p, 5);
-            enemies[i] = new Enemy(this, ep.x * tileSize, ep.y * tileSize);
+            int enemyCount = Math.min(12, 2 + level + (maxScreenCol / 10));
+            enemies = new Enemy[enemyCount];
+            for(int i = 0; i < enemies.length; i++) {
+                Point ep = map.getRandomFreeTileFarFrom(p, 5);
+                enemies[i] = new Enemy(this, ep.x * tileSize, ep.y * tileSize);
+            }
         }
 
         saveLevelState(); // Snapshot for potential deaths
@@ -176,6 +216,14 @@ public class GamePanel extends JPanel implements Runnable {
             enemies[i].path.clear();
         }
         
+        // Restore Boss
+        arrows.clear();
+        if (archerBoss != null) {
+            archerBoss.x = (maxScreenCol/2) * tileSize;
+            archerBoss.y = (maxScreenRow/2) * tileSize;
+            archerBoss.cooldown = 0;
+        }
+        
         startTime = System.currentTimeMillis();
         gameStarted = false;
         countdown = 3;
@@ -188,14 +236,69 @@ public class GamePanel extends JPanel implements Runnable {
     }
 
     public boolean checkPlayerHit() {
+        if (invincibilityFrames > 0) return false;
+        
         Rectangle playerRect = player.getBounds();
+        
+        // Ghost Check
         for(int i = 0; i < enemies.length; i++) {
-            Rectangle enemyRect = enemies[i].getBounds();
-            if(playerRect.intersects(enemyRect)) {
+            if (enemies[i] != null) {
+                Rectangle enemyRect = enemies[i].getBounds();
+                if(playerRect.intersects(enemyRect)) {
+                    return true;
+                }
+            }
+        }
+        
+        // Boss Check
+        if (archerBoss != null && playerRect.intersects(archerBoss.getBounds())) {
+            return true;
+        }
+
+        // Arrow Check
+        for (int i = 0; i < arrows.size(); i++) {
+            if (arrows.get(i).active && playerRect.intersects(arrows.get(i).getBounds())) {
+                arrows.get(i).active = false;
                 return true;
             }
         }
+
         return false;
+    }
+
+    public void bossHitPlayer() {
+        if (invincibilityFrames <= 0) {
+            lives--;
+            invincibilityFrames = 60; // 1 second invulnerability
+            if (lives <= 0) terminateGame();
+        }
+    }
+
+    public void bossDefeated() {
+        archerBoss = null;
+        arrows.clear();
+        explosionTrackers.clear();
+        exitLocked = false; // Door unlocks!
+        score += 500;
+    }
+    
+    private void terminateGame() {
+        gameOver = true;
+        if (!scoreSaved) {
+            scoreSaved = true;
+            String finalScore = String.valueOf(score);
+            String finalLevel = String.valueOf(level);
+            String finalMode = currentMode.toString().toUpperCase();
+            String finalCoins = String.valueOf(coinsCollected);
+            
+            // Show prompt on UI thread
+            SwingUtilities.invokeLater(() -> {
+                String name = JOptionPane.showInputDialog(this, "GAME OVER! Final Score: " + finalScore + "\nEnter your name:", "Save Score", JOptionPane.PLAIN_MESSAGE);
+                if (name != null && !name.trim().isEmpty()) {
+                    ScoreManager.saveScore(name, Integer.parseInt(finalScore), Integer.parseInt(finalLevel), finalMode, Integer.parseInt(finalCoins));
+                }
+            });
+        }
     }
 
     public boolean playerReachedExit() {
@@ -255,6 +358,11 @@ public class GamePanel extends JPanel implements Runnable {
         }
 
         if (paused) return;
+
+        // Handle Invincibility
+        if (invincibilityFrames > 0) {
+            invincibilityFrames--;
+        }
 
         if (isLifeLost) {
             if (keyH.restartPressed) {
@@ -317,32 +425,42 @@ public class GamePanel extends JPanel implements Runnable {
             }
         }
 
+        if (archerBoss != null) archerBoss.update(player.x, player.y);
+        
+        for (int i = 0; i < arrows.size(); i++) {
+            Arrow a = arrows.get(i);
+            a.update();
+            if (i < arrows.size() && arrows.get(i) == a && !a.active) {
+                arrows.remove(i);
+                i--;
+            }
+        }
+
+        for (int i = 0; i < explosionTrackers.size(); i++) {
+            ExplosionTracker et = explosionTrackers.get(i);
+            et.update(player.x, player.y);
+            // Defeating the boss clears this list, we verify it wasn't destroyed mid-iteration
+            if (i < explosionTrackers.size() && explosionTrackers.get(i) == et && et.phase == 3) {
+                explosionTrackers.remove(i);
+                i--;
+            }
+        }
+
         for(Enemy e : enemies) {
             if(e != null) e.update(player.x, player.y);
         }
 
         if(checkPlayerHit()) {
-            lives--;
-            if(lives <= 0) {
-                gameOver = true;
-                if (!scoreSaved) {
-                    scoreSaved = true;
-                    String finalScore = String.valueOf(score);
-                    String finalLevel = String.valueOf(level);
-                    String finalMode = currentMode.toString();
-                    String finalCoins = String.valueOf(coinsCollected);
-                    
-                    // Show prompt on UI thread
-                    SwingUtilities.invokeLater(() -> {
-                        String name = JOptionPane.showInputDialog(this, "GAME OVER! Final Score: " + finalScore + "\nEnter your name:", "Save Score", JOptionPane.PLAIN_MESSAGE);
-                        if (name != null && !name.trim().isEmpty()) {
-                            ScoreManager.saveScore(name, Integer.parseInt(finalScore), Integer.parseInt(finalLevel), finalMode, Integer.parseInt(finalCoins));
-                        }
-                    });
-                }
+            if (isBossLevel) {
+                bossHitPlayer(); // special instant no-reset damage
             } else {
-                isLifeLost = true;
-                keyH.restartPressed = false; // reset flag
+                lives--;
+                if(lives <= 0) {
+                    terminateGame();
+                } else {
+                    isLifeLost = true;
+                    keyH.restartPressed = false; // reset flag
+                }
             }
         }
 
@@ -397,13 +515,30 @@ public class GamePanel extends JPanel implements Runnable {
                 if (coinImg != null) g2.drawImage(coinImg, c.x * tileSize, c.y * tileSize, tileSize, tileSize, null);
                 else { g2.setColor(Color.yellow); g2.fillOval(c.x * tileSize + 8, c.y * tileSize + 8, 16, 16); }
             }
+            for (Crystal c : crystals) {
+                c.draw(g2);
+            }
             for (Point pu : powerups) {
                 if (powerupImg != null) g2.drawImage(powerupImg, pu.x * tileSize, pu.y * tileSize, tileSize, tileSize, null);
                 else { g2.setColor(Color.cyan); g2.fillRect(pu.x * tileSize + 8, pu.y * tileSize + 8, 16, 16); }
             }
         }
 
-        player.draw(g2);
+        if (archerBoss != null) archerBoss.draw(g2);
+        
+        for (int i = 0; i < arrows.size(); i++) {
+            arrows.get(i).draw(g2);
+        }
+
+        for (int i = 0; i < explosionTrackers.size(); i++) {
+            explosionTrackers.get(i).draw(g2);
+        }
+
+        // Only draw player if not blinking during invincibility
+        if (invincibilityFrames == 0 || invincibilityFrames % 10 < 5) {
+            player.draw(g2);
+        }
+
         for(Enemy e : enemies) {
             if(e != null) e.draw(g2);
         }
@@ -435,6 +570,28 @@ public class GamePanel extends JPanel implements Runnable {
                 int[] yPoints = {heartY + 5, heartY + 15, heartY + 5};
                 g2.fillPolygon(xPoints, yPoints, 3);
             }
+        }
+
+        // --- BOSS HUD ---
+        if (archerBoss != null) {
+            g2.setColor(Color.WHITE);
+            g2.setFont(new Font("Arial", Font.BOLD, 16));
+            g2.drawString("ARCHER BOSS", logicalWidth / 2 - 60, logicalHeight - 40);
+            
+            int hw = 200;
+            int hh = 20;
+            int hx = logicalWidth / 2 - hw / 2;
+            int hy = logicalHeight - 30;
+            
+            g2.setColor(Color.DARK_GRAY);
+            g2.fillRect(hx, hy, hw, hh); // empty health bg
+            
+            g2.setColor(new Color(138, 43, 226)); // Boss Purple
+            int filled = (hw * archerBoss.hp) / 5;
+            g2.fillRect(hx, hy, filled, hh);
+            
+            g2.setColor(Color.WHITE);
+            g2.drawRect(hx, hy, hw, hh);
         }
 
         // --- OVERLAYS ---

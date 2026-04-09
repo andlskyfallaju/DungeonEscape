@@ -30,6 +30,7 @@ public class GameMenu extends Application {
 
     private void showMainMenu(Stage stage) {
         StackPane menuRoot = new StackPane();
+        menuRoot.setStyle("-fx-background-color: black;"); // Letterbox framing
         Scene scene = new Scene(menuRoot, 960, 720);
 
         // --- ADAPTIVE SCALING FOR JAVAFX ---
@@ -37,9 +38,18 @@ public class GameMenu extends Application {
         scaler.setPrefSize(960, 720);
         scaler.setMaxSize(960, 720);
         
+        // Preserve 4:3 Aspect Ratio uniformly
+        javafx.beans.binding.NumberBinding minScale = javafx.beans.binding.Bindings.min(
+                scene.widthProperty().divide(960.0),
+                scene.heightProperty().divide(720.0)
+        );
+
         javafx.scene.transform.Scale scale = new javafx.scene.transform.Scale(1, 1, 0, 0);
-        scale.xProperty().bind(scene.widthProperty().divide(960));
-        scale.yProperty().bind(scene.heightProperty().divide(720));
+        scale.xProperty().bind(minScale);
+        scale.yProperty().bind(minScale);
+        // Pivot from center so we can center the stack pane itself seamlessly
+        scale.setPivotX(480);
+        scale.setPivotY(360);
         scaler.getTransforms().add(scale);
         
         menuRoot.getChildren().add(scaler);
@@ -78,6 +88,10 @@ public class GameMenu extends Application {
 
         stage.setTitle("Dungeon Escape");
         stage.setScene(scene);
+        stage.setOnCloseRequest(e -> {
+            Platform.exit();
+            System.exit(0);
+        });
         stage.show();
     }
 
@@ -124,7 +138,10 @@ public class GameMenu extends Application {
             root.getChildren().add(createScoreboard(root, stage));
         });
 
-        exitBtn.setOnAction(e -> stage.close());
+        exitBtn.setOnAction(e -> {
+            Platform.exit();
+            System.exit(0);
+        });
 
         ImageView menuBg = new ImageView();
         try {
@@ -190,24 +207,51 @@ public class GameMenu extends Application {
         Text title = new Text("HIGH SCORES");
         title.setStyle("-fx-font-size: 32px; -fx-fill: red; -fx-font-weight: bold;");
 
-        VBox scoreList = new VBox(10);
-        scoreList.setAlignment(Pos.CENTER);
-        
+        VBox casualList = new VBox(10);
+        casualList.setAlignment(Pos.TOP_CENTER);
+        Text casualTitle = new Text("CASUAL MODE");
+        casualTitle.setStyle("-fx-font-size: 20px; -fx-fill: orange; -fx-font-weight: bold; -fx-underline: true;");
+        casualList.getChildren().add(casualTitle);
+
+        VBox escapeList = new VBox(10);
+        escapeList.setAlignment(Pos.TOP_CENTER);
+        Text escapeTitle = new Text("ESCAPE MODE");
+        escapeTitle.setStyle("-fx-font-size: 20px; -fx-fill: cyan; -fx-font-weight: bold; -fx-underline: true;");
+        escapeList.getChildren().add(escapeTitle);
+
         List<ScoreEntry> scores = ScoreManager.getTopScores();
-        if (scores.isEmpty()) {
-            Text emptyText = new Text("NO SCORES YET");
-            emptyText.setStyle("-fx-fill: gray; -fx-font-size: 18px;");
-            scoreList.getChildren().add(emptyText);
-        } else {
-            for (int i = 0; i < scores.size(); i++) {
-                ScoreEntry s = scores.get(i);
-                String modeTag = "[" + s.mode + "]";
-                String coinDetail = s.mode.equals("ESCAPE") ? " | Coins: " + s.coins : "";
-                Text scoreText = new Text(String.format("%d. %-8s - %d pts (Lvl %d) %-8s %s", (i + 1), s.name, s.score, s.level, modeTag, coinDetail));
+        int casualRank = 1;
+        int escapeRank = 1;
+
+        for (ScoreEntry s : scores) {
+            if (s.mode.equalsIgnoreCase("ESCAPE")) {
+                String coinDetail = " | Coins: " + s.coins;
+                Text scoreText = new Text(String.format("%d. %-8s - %d pts (Lvl %d) %s", escapeRank++, s.name, s.score, s.level, coinDetail));
                 scoreText.setStyle("-fx-fill: white; -fx-font-family: 'Courier New'; -fx-font-size: 14px;");
-                scoreList.getChildren().add(scoreText);
+                escapeList.getChildren().add(scoreText);
+            } else {
+                Text scoreText = new Text(String.format("%d. %-8s - %d pts (Lvl %d)", casualRank++, s.name, s.score, s.level));
+                scoreText.setStyle("-fx-fill: white; -fx-font-family: 'Courier New'; -fx-font-size: 14px;");
+                casualList.getChildren().add(scoreText);
             }
         }
+
+        if (casualRank == 1) {
+            Text empty = new Text("NO SCORES YET");
+            empty.setStyle("-fx-fill: gray; -fx-font-size: 16px;");
+            casualList.getChildren().add(empty);
+        }
+        if (escapeRank == 1) {
+            Text empty = new Text("NO SCORES YET");
+            empty.setStyle("-fx-fill: gray; -fx-font-size: 16px;");
+            escapeList.getChildren().add(empty);
+        }
+
+        casualList.setPrefWidth(450);
+        escapeList.setPrefWidth(450);
+
+        javafx.scene.layout.HBox columns = new javafx.scene.layout.HBox(0, escapeList, casualList);
+        columns.setAlignment(Pos.CENTER);
 
         Button backBtn = new Button("BACK TO MENU");
         backBtn.setStyle("-fx-background-color: #444; -fx-text-fill: white; -fx-font-size: 16px; -fx-margin-top: 20px; -fx-cursor: hand;");
@@ -217,7 +261,7 @@ public class GameMenu extends Application {
             root.getChildren().add(createMenu(root, stage));
         });
 
-        VBox layout = new VBox(30, title, scoreList, backBtn);
+        VBox layout = new VBox(30, title, columns, backBtn);
         layout.setAlignment(Pos.CENTER);
         layout.setStyle("-fx-background-color: rgba(0, 0, 0, 0.7); -fx-padding: 50;");
 

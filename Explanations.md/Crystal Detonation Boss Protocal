@@ -1,0 +1,37 @@
+# Implementation Plan: The Crystal Detonation Boss Protocol
+
+This plan details a massive overhaul to the Boss encounter logic. We are transforming the fight from a simple survival game into a complex "Decoy and Detonate" puzzle, bringing it closer to legendary boss fights found in games like *Zelda* or *Dark Souls*.
+
+## User Review Required
+> [!IMPORTANT]
+> **Crystal Placement**: Currently, you collect coins. In the boss map, I propose we completely remove standard coins. Instead, the 5 Crystals will spawn near the 4 map pillars (and 1 in the center-top). This gives you cover while attempting to bait the explosion.
+>
+> **Health UI Generation Prompt**: You asked for a prompt to feed an Image Generator for your custom health bar. Here is the exact prompt you should use (e.g. Midjourney or DALL-E):
+> *"A pixel art 2D video game boss health bar spritesheet. The spritesheet contains 6 separate horizontal bars stacked vertically. The top bar is 100% full, showing 5 glowing magical crystals or hearts. The second bar shows 4 full crystals and 1 shattered. The sequence continues until the bottom bar which is completely empty and shattered. The style is 16-bit retro dungeon fantasy, gothic dark tones, vibrant neon colors for the health tracking."*
+
+## Proposed Changes
+
+### [Engine Mechanics] `ArcherBoss.java` Updates
+- **Health Management**: The Boss will now track `health = 5` and a `frenzyTimer = 0`.
+- **Frenzy Mode (Bullet Hell)**: When `frenzyTimer > 0`, the boss stops moving and fires an arrow in a circular fan pattern (8-directional or rotating) every `12` frames (0.2s) for 5 seconds (300 frames).
+- **Attack RNG**: When not in frenzy, the boss occasionally winds up an "Explosion Attack" (changing color or shaking) before spawning the `ExplodingTracker`. Let's set the normal arrow cooldown to exactly 48 frames (0.8s) as requested.
+
+### [New Entity] `ExplodingTracker.java`
+- Acts as a 60% translucent UI reticle hovering over the map.
+- **Phase 1 (Tracking)**: Takes exactly 3 seconds to lock on. It uses A-star or simple lerp logic towards the player's current coordinates. It is colored `RGBA(255, 0, 0, 0.6)`.
+- **Phase 2 (Lock-On)**: Once the timer hits 0, the tracker halts its movement entirely, snaps to green `RGBA(0, 255, 0, 0.6)` for exactly 1 second to give the player time to run.
+- **Phase 3 (Detonation)**: The tracker triggers a radius check. If it intersects the player, it damages them. If it overlaps a Crystal's bounding box, it destroys the Crystal and triggers the boss's Frenzy state. The tracked area then plays a brief explosive visual.
+
+### [New Entity] `Crystal.java`
+- Placed on the map layout during Boss initialization.
+- Contains an `active` boolean and draws itself as a large pulsing gem. When hit by an explosion, `active = false` and it relays a `hitBoss()` command to the `GamePanel`.
+
+### [Core Engine] `GamePanel.java`
+- **Boss HUD**: Implements a dedicated Boss HUD drawn at the bottom center of the window displaying the Boss's name ("ARCHER GHOST") and dynamically slicing a loaded Health Bar sprite image based on the boss's current health remaining (5 down to 0).
+- **Game Progression**: Removing all the crystals kills the boss, unlocking the door automatically and granting massive points.
+
+---
+
+## Verification Plan
+1. **Frenzy Testing**: I will purposely lower the standard arrow count and force a crystal break to ensure the 0.2s bullet hell spread does not permanently trap the player or crash the game.
+2. **Tracker Lock-On**: I will verify the tracking visual accurately changes from 60% Red to Green when snapping onto the crystal coordinates before exploding.

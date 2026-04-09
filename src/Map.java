@@ -16,7 +16,29 @@ public class Map {
         map = new int[gp.maxScreenRow][gp.maxScreenCol];
 
         getTileImage();
-        loadMap();
+        loadMap(1); // Default to level 1 on init
+    }
+
+    public Point getRandomFreeTileFarFromAll(java.util.List<Crystal> targets, int minDistance) {
+        Random rand = new Random();
+        for (int i = 0; i < 500; i++) {
+            int col = rand.nextInt(gp.maxScreenCol);
+            int row = rand.nextInt(gp.maxScreenRow);
+
+            if (map[row][col] == 0) {
+                boolean valid = true;
+                for (Crystal c : targets) {
+                    int colDist = Math.abs((c.x / gp.tileSize) - col);
+                    int rowDist = Math.abs((c.y / gp.tileSize) - row);
+                    if (colDist + rowDist < minDistance) {
+                        valid = false;
+                        break;
+                    }
+                }
+                if (valid) return new Point(col, row);
+            }
+        }
+        return getRandomFreeTile(); // fallback
     }
 
     public Point getRandomFreeTile() {
@@ -70,9 +92,13 @@ public class Map {
         }
     }
 
-    public void loadMap() {
+    public void loadMap(int level) {
 
         Random rand = new Random();
+        
+        // Base 20% + 5% for every 5 levels (caps around 40%)
+        int wallChance = 20 + ((level - 1) / 5) * 5;
+        if (wallChance > 40) wallChance = 40;
 
         map = new int[gp.maxScreenRow][gp.maxScreenCol];
 
@@ -83,8 +109,8 @@ public class Map {
                 if(row == 0 || col == 0 || row == gp.maxScreenRow - 1 || col == gp.maxScreenCol - 1) {
                     map[row][col] = 1;
                 } else {
-                    // Random walls (20% chance)
-                    if(rand.nextInt(100) < 20) {
+                    // Random walls (scales with level)
+                    if(rand.nextInt(100) < wallChance) {
                         map[row][col] = 1;
                     } else {
                         map[row][col] = 0;
@@ -93,6 +119,33 @@ public class Map {
             }
         }
         // Note: ensurePathExists is now called from GamePanel after positions are set
+    }
+
+    public void loadArenaMap() {
+        map = new int[gp.maxScreenRow][gp.maxScreenCol];
+        for(int row = 0; row < gp.maxScreenRow; row++) {
+            for(int col = 0; col < gp.maxScreenCol; col++) {
+                // Border
+                if(row == 0 || col == 0 || row == gp.maxScreenRow - 1 || col == gp.maxScreenCol - 1) {
+                    map[row][col] = 1;
+                } else {
+                    map[row][col] = 0; // Empty everything
+                }
+            }
+        }
+        
+        // 4 Pillars (2x2)
+        int p1C = 4; int p1R = 4;
+        map[p1R][p1C] = 1; map[p1R][p1C+1] = 1; map[p1R+1][p1C] = 1; map[p1R+1][p1C+1] = 1;
+
+        int p2C = gp.maxScreenCol - 6; int p2R = 4;
+        map[p2R][p2C] = 1; map[p2R][p2C+1] = 1; map[p2R+1][p2C] = 1; map[p2R+1][p2C+1] = 1;
+
+        int p3C = 4; int p3R = gp.maxScreenRow - 6;
+        map[p3R][p3C] = 1; map[p3R][p3C+1] = 1; map[p3R+1][p3C] = 1; map[p3R+1][p3C+1] = 1;
+
+        int p4C = gp.maxScreenCol - 6; int p4R = gp.maxScreenRow - 6;
+        map[p4R][p4C] = 1; map[p4R][p4C+1] = 1; map[p4R+1][p4C] = 1; map[p4R+1][p4C+1] = 1;
     }
 
     public void ensurePathExists(int startX, int startY, int endX, int endY) {
