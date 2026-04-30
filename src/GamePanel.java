@@ -966,94 +966,102 @@ public class GamePanel extends JPanel implements Runnable {
             int px = (logicalWidth - g2.getFontMetrics().stringWidth(prompt)) / 2;
             g2.drawString(prompt, px, logicalHeight / 2 + 60);
         } else if (gameWon) {
-            // ===== CINEMATIC VICTORY SCREEN =====
-            // Full black background
+            // ===== CINEMATIC VICTORY SCREEN (UPGRADED) =====
             g2.setColor(Color.BLACK);
             g2.fillRect(0, 0, logicalWidth, logicalHeight);
 
             int midX = logicalWidth / 2;
             int midY = logicalHeight / 2;
 
-            // --- LIGHT BURST from dungeon exit ---
-            float pulse = (float)(Math.sin(System.currentTimeMillis() / 400.0) * 0.15 + 0.85);
-            for (int i = 8; i >= 0; i--) {
-                int alpha = (int)(30 * pulse);
-                g2.setColor(new Color(255, 220, 130, alpha));
-                int rad = 80 + (i * 40);
-                g2.fillOval(midX - rad, midY - 20 - rad, rad * 2, rad * 2);
+            // --- CINEMATIC RADIAL GRADIENT (Light at the end of the tunnel) ---
+            float[] dist = {0.0f, 0.7f, 1.0f};
+            Color[] colors = {new Color(255, 240, 180, 200), new Color(100, 70, 20, 100), Color.BLACK};
+            RadialGradientPaint rgp = new RadialGradientPaint(new Point(midX, midY - 50), 500, dist, colors);
+            g2.setPaint(rgp);
+            g2.fillRect(0, 0, logicalWidth, logicalHeight);
+
+            // --- FLOATING LIGHT PARTICLES (Motes) ---
+            java.util.Random prand = new java.util.Random(12345);
+            for (int i = 0; i < 40; i++) {
+                long t = System.currentTimeMillis();
+                int px = prand.nextInt(logicalWidth);
+                int py = (int)((prand.nextInt(logicalHeight) + (t / 20.0)) % logicalHeight);
+                int size = prand.nextInt(4) + 1;
+                g2.setColor(new Color(255, 255, 200, 100));
+                g2.fillOval(px, py, size, size);
             }
 
-            // --- DUNGEON GATE (Two stone pillars + arch) ---
+            // --- DETAILED DUNGEON GATE ---
+            // Main Pillars
+            g2.setColor(new Color(40, 40, 40));
+            g2.fillRect(midX - 130, midY - 180, 50, 360); // Left
+            g2.fillRect(midX + 80, midY - 180, 50, 360);  // Right
+            g2.fillRect(midX - 130, midY - 200, 260, 40); // Top Arch
+
+            // Stone Details (Cracks and Highlights)
             g2.setColor(new Color(60, 60, 60));
-            g2.fillRect(midX - 120, midY - 150, 40, 300); // Left pillar
-            g2.fillRect(midX + 80, midY - 150, 40, 300);  // Right pillar
-            g2.fillRect(midX - 120, midY - 170, 240, 30);  // Top arch
+            for (int i = 0; i < 10; i++) {
+                g2.drawLine(midX - 130, midY - 180 + i * 36, midX - 80, midY - 180 + i * 36);
+                g2.drawLine(midX + 80, midY - 180 + i * 36, midX + 130, midY - 180 + i * 36);
+            }
+            g2.setColor(new Color(255, 255, 255, 30));
+            g2.drawRect(midX - 130, midY - 180, 50, 360);
+            g2.drawRect(midX + 80, midY - 180, 50, 360);
 
-            // Pillar detail lines
-            g2.setColor(new Color(80, 80, 80));
-            g2.drawRect(midX - 115, midY - 145, 30, 290);
-            g2.drawRect(midX + 85, midY - 145, 30, 290);
+            // Blinding Light Through Gate
+            float pulse = (float)(Math.sin(System.currentTimeMillis() / 400.0) * 0.15 + 0.85);
+            g2.setColor(new Color(255, 245, 200, (int)(220 * pulse)));
+            g2.fillRect(midX - 80, midY - 160, 160, 340);
 
-            // Light through the gate
-            g2.setColor(new Color(255, 240, 180, (int)(180 * pulse)));
-            g2.fillRect(midX - 78, midY - 140, 156, 290);
-
-            // --- PLAYER CHARACTER walking out ---
-            BufferedImage playerSprite = player.down;
-            if (playerSprite != null) {
-                int pSize = tileSize * 3;
-                g2.drawImage(playerSprite, midX - pSize / 2, midY - 20, pSize, pSize, null);
-            } else {
-                g2.setColor(Color.WHITE);
-                g2.fillRect(midX - 15, midY + 10, 30, 40);
+            // --- PLAYER CHARACTER ---
+            if (player.down != null) {
+                int pSize = (int)(tileSize * 2.5);
+                g2.drawImage(player.down, midX - pSize / 2, midY + 40, pSize, pSize, null);
             }
 
-            // --- "YOU ESCAPED" TITLE ---
-            g2.setFont(new Font("Serif", Font.BOLD, 64));
-            String title = "YOU ESCAPED";
-            int titleW = g2.getFontMetrics().stringWidth(title);
-            // Text shadow
-            g2.setColor(new Color(0, 0, 0, 180));
-            g2.drawString(title, midX - titleW / 2 + 3, 100 + 3);
-            // Main text - golden
-            g2.setColor(new Color(255, 215, 0));
-            g2.drawString(title, midX - titleW / 2, 100);
+            // --- "YOU ESCAPED" TITLE (WITH GLOW) ---
+            g2.setFont(new Font("Serif", Font.BOLD, 72));
+            String titleText = "YOU ESCAPED";
+            int titleW = g2.getFontMetrics().stringWidth(titleText);
+            // Outer Glow
+            for (int i = 5; i > 0; i--) {
+                g2.setColor(new Color(255, 215, 0, 40));
+                g2.drawString(titleText, midX - titleW / 2 + i, 120 + i);
+                g2.drawString(titleText, midX - titleW / 2 - i, 120 - i);
+            }
+            g2.setColor(new Color(255, 230, 100));
+            g2.drawString(titleText, midX - titleW / 2, 120);
 
-            // --- STATS ---
+            // --- STATS (Parchment Style) ---
+            int statsY = logicalHeight - 180;
+            g2.setColor(new Color(255, 255, 255, 180));
+            g2.setFont(new Font("Monospaced", Font.BOLD, 22));
             long finalTime = (gameEndTime - gameStartTime) / 1000;
-            long mins = finalTime / 60;
-            long secs = finalTime % 60;
-
-            g2.setFont(new Font("Arial", Font.PLAIN, 20));
-            g2.setColor(new Color(200, 200, 200));
-            String timeStat = "Time: " + mins + "m " + secs + "s";
-            String deathStat = "Deaths: " + totalRetries;
-            String scoreStat = "Final Score: " + score;
-
-            int statY = logicalHeight - 160;
-            g2.drawString(timeStat, midX - g2.getFontMetrics().stringWidth(timeStat) / 2, statY);
-            g2.drawString(deathStat, midX - g2.getFontMetrics().stringWidth(deathStat) / 2, statY + 28);
-            g2.drawString(scoreStat, midX - g2.getFontMetrics().stringWidth(scoreStat) / 2, statY + 56);
+            String timeStr = String.format("TIME: %02dm %02ds", finalTime / 60, finalTime % 60);
+            g2.drawString(timeStr, midX - g2.getFontMetrics().stringWidth(timeStr) / 2, statsY);
+            String deathStr = "DEATHS: " + totalRetries;
+            g2.drawString(deathStr, midX - g2.getFontMetrics().stringWidth(deathStr) / 2, statsY + 30);
+            String scoreStr = "FINAL SCORE: " + score;
+            g2.drawString(scoreStr, midX - g2.getFontMetrics().stringWidth(scoreStr) / 2, statsY + 60);
 
             // --- BUTTONS ---
-            g2.setFont(new Font("Arial", Font.PLAIN, 16));
-            g2.setColor(new Color(180, 180, 180));
-            String prompt = "PRESS R TO PLAY AGAIN";
-            g2.drawString(prompt, midX - g2.getFontMetrics().stringWidth(prompt) / 2, logicalHeight - 50);
+            g2.setFont(new Font("Arial", Font.PLAIN, 18));
+            g2.setColor(Color.WHITE);
+            String restartTxt = "PRESS R TO PLAY AGAIN";
+            g2.drawString(restartTxt, midX - g2.getFontMetrics().stringWidth(restartTxt) / 2, logicalHeight - 70);
 
-            menuBtnRect.x = (logicalWidth - 200) / 2;
-            menuBtnRect.y = logicalHeight - 40;
-            g2.setColor(new Color(50, 50, 50));
-            g2.fill(menuBtnRect);
-            g2.setColor(Color.white);
-            g2.draw(menuBtnRect);
-            g2.setFont(new Font("Arial", Font.BOLD, 14));
-            String btnText = "RETURN TO MENU";
-            int tx = menuBtnRect.x + (menuBtnRect.width - g2.getFontMetrics().stringWidth(btnText)) / 2;
-            int ty = menuBtnRect.y + 25;
-            g2.drawString(btnText, tx, ty);
-
-        } else if(gameOver || isLifeLost) {
+            menuBtnRect.x = (logicalWidth - 220) / 2;
+            menuBtnRect.y = logicalHeight - 50;
+            menuBtnRect.width = 220;
+            g2.setColor(new Color(30, 30, 30));
+            g2.fillRoundRect(menuBtnRect.x, menuBtnRect.y, menuBtnRect.width, menuBtnRect.height, 15, 15);
+            g2.setColor(new Color(255, 215, 0));
+            g2.drawRoundRect(menuBtnRect.x, menuBtnRect.y, menuBtnRect.width, menuBtnRect.height, 15, 15);
+            g2.setFont(new Font("Arial", Font.BOLD, 16));
+            String btnT = "RETURN TO MENU";
+            g2.drawString(btnT, menuBtnRect.x + (menuBtnRect.width - g2.getFontMetrics().stringWidth(btnT)) / 2, menuBtnRect.y + 25);
+        }
+ else if(gameOver || isLifeLost) {
             g2.setColor(new Color(0, 0, 0, 150));
             g2.fillRect(0, 0, logicalWidth, logicalHeight);
 
