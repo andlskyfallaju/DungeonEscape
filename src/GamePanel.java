@@ -34,6 +34,7 @@ public class GamePanel extends JPanel implements Runnable {
     public double voidWallX = -300;
     public Rectangle finalPortal = null;
     public int portalWinTimer = 0;
+    public int voidStopTimer = 0;
 
     // Snapshot for "Same Level" restart logic
     int[][] initialMap;
@@ -1176,6 +1177,12 @@ public class GamePanel extends JPanel implements Runnable {
         // --- VOID RUBBER BANDING ---
         double baseVoidSpeed = 4.8;
         double currentVoidSpeed = baseVoidSpeed;
+
+        if (voidStopTimer > 0) {
+            voidStopTimer--;
+            currentVoidSpeed = 0;
+        }
+
         double distFromLeft = voidWallX - cameraX;
 
         // Calculate player's current actual move speed
@@ -1224,8 +1231,9 @@ public class GamePanel extends JPanel implements Runnable {
         // Void Wall death
         if (player.x < voidWallX && invincibilityFrames <= 0) {
             bossHitPlayer();
-            // Restoring the 2-block push as requested to ensure clearance
-            player.x = (int)voidWallX + (tileSize * 2);
+            voidStopTimer = 180; // Stop for 3 seconds
+            // Move player 3 tiles ahead of the wall
+            player.x = (int)voidWallX + (tileSize * 3);
         }
 
 
