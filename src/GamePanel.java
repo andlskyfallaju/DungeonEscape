@@ -399,11 +399,9 @@ public class GamePanel extends JPanel implements Runnable {
         if (godMode) return;
         if (invincibilityFrames <= 0) {
             lives--;
-            invincibilityFrames = 60; // 1 second invulnerability
+            invincibilityFrames = 180; // 3 seconds invulnerability
             if (lives <= 0) {
                 terminateGame();
-            } else {
-                isLifeLost = true; // Consistent with regular enemies
             }
 
             // Trigger screenshake on hit
