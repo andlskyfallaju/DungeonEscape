@@ -1029,7 +1029,7 @@ public class GamePanel extends JPanel implements Runnable {
             String scoreStr = "FINAL SCORE: " + score;
 
             String[] allStats = {timeStr, deathStr, scoreStr};
-            for (int i = 0; i < allStats.size(); i++) {
+            for (int i = 0; i < allStats.length; i++) {
                 int ty = statsStartY + (i * 35);
                 int tw = g2.getFontMetrics().stringWidth(allStats[i]);
                 // Text Shadow for contrast
