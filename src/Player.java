@@ -19,7 +19,7 @@ public class Player {
         this.gp = gp;
         this.keyH = keyH;
         speed = 6;
-        
+
         getPlayerImage();
     }
 
@@ -35,22 +35,33 @@ public class Player {
     }
 
     public boolean checkCollision(int x, int y) {
-
         int leftCol = x / gp.tileSize;
         int rightCol = (x + width - 1) / gp.tileSize;
         int topRow = y / gp.tileSize;
         int bottomRow = (y + width - 1) / gp.tileSize;
 
-        int tile1 = gp.map.map[topRow][leftCol];
-        int tile2 = gp.map.map[topRow][rightCol];
-        int tile3 = gp.map.map[bottomRow][leftCol];
-        int tile4 = gp.map.map[bottomRow][rightCol];
+        // Verify within map bounds
+        if (topRow < 0 || bottomRow >= gp.map.map.length || leftCol < 0 || rightCol >= gp.map.map[0].length) {
+            return true;
+        }
 
-        return gp.map.tile[tile1].collision ||
-                gp.map.tile[tile2].collision ||
-                gp.map.tile[tile3].collision ||
-                gp.map.tile[tile4].collision;
+        int[] tiles = {
+                gp.map.map[topRow][leftCol],
+                gp.map.map[topRow][rightCol],
+                gp.map.map[bottomRow][leftCol],
+                gp.map.map[bottomRow][rightCol]
+        };
 
+        for (int t : tiles) {
+            if (t == 4) { // Stagger Rubble
+                gp.staggerTimer = 120; // 2 seconds
+            }
+            if (t == 5) { // Spikes
+                gp.bossHitPlayer(); // Take hazard damage
+            }
+            if (t >= 0 && gp.map.tile[t].collision) return true;
+        }
+        return false;
     }
 
     public void update() {
@@ -58,20 +69,26 @@ public class Player {
         int newX = x;
         int newY = y;
 
+        int moveSpeed = speed;
+        if (gp.staggerTimer > 0) {
+            moveSpeed = (int)(speed * 0.4);
+            if (moveSpeed < 1) moveSpeed = 1;
+        }
+
         if(keyH.upPressed) {
-            newY -= speed;
+            newY -= moveSpeed;
             direction = "up";
         }
         if(keyH.downPressed) {
-            newY += speed;
+            newY += moveSpeed;
             direction = "down";
         }
         if(keyH.leftPressed) {
-            newX -= speed;
+            newX -= moveSpeed;
             direction = "left";
         }
         if(keyH.rightPressed) {
-            newX += speed;
+            newX += moveSpeed;
             direction = "right";
         }
 
@@ -97,6 +114,9 @@ public class Player {
     }
 
     public void draw(Graphics2D g2) {
+        if (gp.staggerTimer > 0 && gp.frameCount % 10 < 5) {
+            return; // Blinking effect
+        }
         BufferedImage image = null;
 
         switch (direction) {
@@ -107,7 +127,7 @@ public class Player {
         }
 
         // Fallback if the specific directional image is missing
-        if (image == null) image = down; 
+        if (image == null) image = down;
 
         if (image != null) {
             // Calculate aspect ratio to prevent "smooshing"

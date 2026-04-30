@@ -3,7 +3,7 @@ import java.awt.event.KeyListener;
 
 public class KeyHandler implements KeyListener {
 
-    public boolean upPressed, downPressed, leftPressed, rightPressed, restartPressed, escPressed;
+    public boolean upPressed, downPressed, leftPressed, rightPressed, restartPressed, escPressed, enterPressed, pPressed, gPressed, lPressed, oPressed;
 
     @Override
     public void keyTyped(KeyEvent e) {}
@@ -31,6 +31,21 @@ public class KeyHandler implements KeyListener {
         if(code == KeyEvent.VK_ESCAPE) {
             escPressed = true;
         }
+        if(code == KeyEvent.VK_ENTER) {
+            enterPressed = true;
+        }
+        if(code == KeyEvent.VK_P) {
+            pPressed = true;
+        }
+        if(code == KeyEvent.VK_G) {
+            gPressed = true;
+        }
+        if(code == KeyEvent.VK_L) {
+            lPressed = true;
+        }
+        if(code == KeyEvent.VK_O) {
+            oPressed = true;
+        }
     }
 
     @Override
@@ -55,6 +70,21 @@ public class KeyHandler implements KeyListener {
         }
         if(code == KeyEvent.VK_ESCAPE) {
             escPressed = false;
+        }
+        if(code == KeyEvent.VK_ENTER) {
+            enterPressed = false;
+        }
+        if(code == KeyEvent.VK_P) {
+            pPressed = false;
+        }
+        if(code == KeyEvent.VK_G) {
+            gPressed = false;
+        }
+        if(code == KeyEvent.VK_L) {
+            lPressed = false;
+        }
+        if(code == KeyEvent.VK_O) {
+            oPressed = false;
         }
     }
 }

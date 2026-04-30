@@ -12,7 +12,7 @@ public class Map {
     public Map(GamePanel gp) {
         this.gp = gp;
 
-        tile = new Tile[3];
+        tile = new Tile[6];
         map = new int[gp.maxScreenRow][gp.maxScreenCol];
 
         getTileImage();
@@ -56,7 +56,7 @@ public class Map {
             row = rand.nextInt(gp.maxScreenRow);
             attempts++;
 
-            if(map[row][col] == 0) { 
+            if(map[row][col] == 0) {
                 if(p == null) return new Point(col, row);
 
                 int distance = Math.abs(col - p.x) + Math.abs(row - p.y);
@@ -83,19 +83,47 @@ public class Map {
             tile[2] = new Tile();
             tile[2].image = ImageIO.read(getClass().getResourceAsStream("/res/exit.png"));
             tile[2].collision = false;
+
+            // VOID / HOLE (3)
+            tile[3] = new Tile();
+            tile[3].image = null; // Black hole
+            tile[3].color = Color.BLACK;
+            tile[3].collision = true;
+
+            // STAGGER RUBBLE (4)
+            tile[4] = new Tile();
+            try {
+                tile[4].image = ImageIO.read(getClass().getResourceAsStream("/res/rubble.png"));
+            } catch (Exception ex) {
+                tile[4].color = new Color(100, 70, 40);
+            }
+            tile[4].collision = false;
+
+            // SPIKES (5)
+            tile[5] = new Tile();
+            try {
+                tile[5].image = ImageIO.read(getClass().getResourceAsStream("/res/spikes.png"));
+            } catch (Exception ex) {
+                tile[5].color = Color.RED;
+            }
+            tile[5].collision = false;
+
         } catch (Exception e) {
             System.out.println("Error loading tile images: " + e.getMessage());
             // Fallback colors if images fail
             tile[0] = new Tile(); tile[0].color = Color.darkGray; tile[0].collision = false;
             tile[1] = new Tile(); tile[1].color = Color.gray; tile[1].collision = true;
             tile[2] = new Tile(); tile[2].color = Color.green; tile[2].collision = false;
+            tile[3] = new Tile(); tile[3].color = Color.BLACK; tile[3].collision = true;
+            tile[4] = new Tile(); tile[4].color = new Color(100, 70, 40); tile[4].collision = false;
+            tile[5] = new Tile(); tile[5].color = Color.RED; tile[5].collision = false;
         }
     }
 
     public void loadMap(int level) {
 
         Random rand = new Random();
-        
+
         // Base 20% + 5% for every 5 levels (caps around 40%)
         int wallChance = 20 + ((level - 1) / 5) * 5;
         if (wallChance > 40) wallChance = 40;
@@ -133,7 +161,7 @@ public class Map {
                 }
             }
         }
-        
+
         // 4 Pillars (2x2)
         int p1C = 4; int p1R = 4;
         map[p1R][p1C] = 1; map[p1R][p1C+1] = 1; map[p1R+1][p1C] = 1; map[p1R+1][p1C+1] = 1;
@@ -148,6 +176,59 @@ public class Map {
         map[p4R][p4C] = 1; map[p4R][p4C+1] = 1; map[p4R+1][p4C] = 1; map[p4R+1][p4C+1] = 1;
     }
 
+    public void removePillar(int index) {
+        int r = -1, c = -1;
+        if (index == 0) { c = 4; r = 4; }
+        else if (index == 1) { c = gp.maxScreenCol - 6; r = 4; }
+        else if (index == 2) { c = 4; r = gp.maxScreenRow - 6; }
+        else if (index == 3) { c = gp.maxScreenCol - 6; r = gp.maxScreenRow - 6; }
+
+        if (r != -1) {
+            map[r][c] = 0; map[r][c+1] = 0; map[r+1][c] = 0; map[r+1][c+1] = 0;
+        }
+    }
+
+    public void triggerShatter() {
+        Random rand = new Random();
+        for (int i = 0; i < 3; i++) {
+            int col = 1 + rand.nextInt(gp.maxScreenCol - 2);
+            int row = 1 + rand.nextInt(gp.maxScreenRow - 2);
+            if (map[row][col] == 0) {
+                map[row][col] = 3; // Turn to void
+            }
+        }
+    }
+
+    public void loadChaseMap() {
+        int chaseWidth = 300;
+        gp.maxScreenCol = chaseWidth;
+        map = new int[gp.maxScreenRow][chaseWidth];
+        Random rand = new Random();
+
+        for (int r = 0; r < gp.maxScreenRow; r++) {
+            for (int c = 0; c < chaseWidth; c++) {
+                // Top/Bottom walls
+                if (r < 4 || r > gp.maxScreenRow - 5) {
+                    map[r][c] = 1;
+                } else {
+                    map[r][c] = 0;
+                    // Obstacles 
+                    if (c > 20 && c < chaseWidth - 20) {
+                        if (rand.nextInt(100) < 5) {
+                            map[r][c] = (rand.nextBoolean()) ? 1 : 4; // 1: Wall, 4: Stagger rubble
+                        }
+                    }
+                }
+            }
+        }
+
+        // Final Portal placeholder
+        int portalCol = chaseWidth - 10;
+        for (int r = 5; r < gp.maxScreenRow - 5; r++) {
+            map[r][portalCol] = 2;
+        }
+    }
+
     public void ensurePathExists(int startX, int startY, int endX, int endY) {
 
         Random rand = new Random();
@@ -156,7 +237,7 @@ public class Map {
 
         // Path carver: moves from start to end ensuring a floor exists
         while (curX != endX || curY != endY) {
-            
+
             // Carve a 2x2 area to make paths wider and less claustrophobic
             for (int i = 0; i <= 1; i++) {
                 for (int j = 0; j <= 1; j++) {
@@ -177,7 +258,7 @@ public class Map {
                 else curY--;
             }
         }
-        
+
         // Ensure the actual exit tile is marked correctly
         map[endY][endX] = 2;
     }

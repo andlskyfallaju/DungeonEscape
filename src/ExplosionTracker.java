@@ -13,7 +13,7 @@ public class ExplosionTracker {
         this.gp = gp;
         this.x = startX;
         this.y = startY;
-        this.size = gp.tileSize; 
+        this.size = gp.tileSize;
     }
 
     public void update(int playerX, int playerY) {
@@ -24,7 +24,7 @@ public class ExplosionTracker {
             double targetY = playerY;
             x += (targetX - x) * 0.05; // 5% distance per frame
             y += (targetY - y) * 0.05;
-            
+
             if (timer > 180) { // 3 seconds locking on
                 phase = 1;
                 timer = 0;
@@ -48,7 +48,7 @@ public class ExplosionTracker {
     private void checkExplosion() {
         // BoomRect expands mathematically by 15px per side (30px total size increase, 18px tighter than previous build)
         Rectangle boomRect = new Rectangle((int) x - 15, (int) y - 15, size + 30, size + 30);
-        
+
         // Did player get caught in the blast?
         if (gp.player.getBounds().intersects(boomRect)) {
             gp.bossHitPlayer(); // special instant damage
@@ -62,9 +62,12 @@ public class ExplosionTracker {
                 hitCrystal = true;
             }
         }
-        
-        if (hitCrystal && gp.archerBoss != null) {
-            gp.archerBoss.hit();
+
+        if (hitCrystal) {
+            int damage = (gp.level == 10) ? 2 : 1;
+            for (ArcherBoss ab : gp.archerBosses) {
+                ab.hit(damage);
+            }
         }
     }
 

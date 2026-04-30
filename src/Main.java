@@ -12,7 +12,7 @@ public class Main {
         window.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         window.setResizable(true); // Enabled adaptive scaling
         window.setTitle("Dungeon Escape [" + mode.toUpperCase() + "]");
-        
+
         GamePanel gamePanel = new GamePanel(mode);
         window.add(gamePanel);
 

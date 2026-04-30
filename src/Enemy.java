@@ -145,6 +145,9 @@ public class Enemy {
 
     public void update(int playerX, int playerY) {
 
+        // --- BREATHE MECHANIC FREEZE ---
+        if (gp.ghostFreezeTimer > 0) return;
+
         // --- SLOW MOTION EFFECT ---
         if (gp.slowTimer > 0) {
             skipCounter++;
@@ -255,7 +258,7 @@ public class Enemy {
             } else {
                 if (!checkCollision(x + moveX, y)) x += moveX;
                 else if (!checkCollision(x, y + moveY)) y += moveY;
-                else path.clear(); 
+                else path.clear();
             }
         }
     }
@@ -264,10 +267,10 @@ public class Enemy {
         for (Enemy other : gp.enemies) {
             if (other != null && other != this) {
                 double dist = Math.sqrt(Math.pow(x - other.x, 2) + Math.pow(y - other.y, 2));
-                if (dist < 15) { 
+                if (dist < 15) {
                     if (x < other.x) { if (!checkCollision(x - 1, y)) x--; }
                     else { if (!checkCollision(x + 1, y)) x++; }
-                    
+
                     if (y < other.y) { if (!checkCollision(x, y - 1)) y--; }
                     else { if (!checkCollision(x, y + 1)) y++; }
                 }
@@ -331,7 +334,7 @@ public class Enemy {
             if (currentState == State.CHASE) {
                 g2.setColor(new Color(255, 0, 0));
             } else {
-                g2.setColor(new Color(255, 140, 0)); 
+                g2.setColor(new Color(255, 140, 0));
             }
             g2.fillRect(x, y, width, height);
         }

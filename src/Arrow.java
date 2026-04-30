@@ -13,7 +13,7 @@ public class Arrow {
         this.gp = gp;
         this.x = startX;
         this.y = startY;
-        
+
         double angle = Math.atan2(targetY - startY, targetX - startX);
         double speed = 7.0; // Fast projectile
         this.dx = Math.cos(angle) * speed;
@@ -37,7 +37,7 @@ public class Arrow {
         int cy = (int) (y + size / 2.0);
         int col = cx / gp.tileSize;
         int row = cy / gp.tileSize;
-        
+
         if (row >= 0 && row < gp.maxScreenRow && col >= 0 && col < gp.maxScreenCol) {
             if (gp.map.map[row][col] == 1) {
                 active = false; // hit a wall or pillar

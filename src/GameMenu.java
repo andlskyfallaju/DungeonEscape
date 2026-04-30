@@ -37,7 +37,7 @@ public class GameMenu extends Application {
         StackPane scaler = new StackPane();
         scaler.setPrefSize(960, 720);
         scaler.setMaxSize(960, 720);
-        
+
         // Preserve 4:3 Aspect Ratio uniformly
         javafx.beans.binding.NumberBinding minScale = javafx.beans.binding.Bindings.min(
                 scene.widthProperty().divide(960.0),
@@ -51,7 +51,7 @@ public class GameMenu extends Application {
         scale.setPivotX(480);
         scale.setPivotY(360);
         scaler.getTransforms().add(scale);
-        
+
         menuRoot.getChildren().add(scaler);
 
         // --- INTRO TEXT ---
