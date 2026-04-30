@@ -399,9 +399,7 @@ public class GamePanel extends JPanel implements Runnable {
             lives--;
             invincibilityFrames = 60; // 1 second invulnerability
             if (lives <= 0) {
-                gameOver = true;
-                totalRetries++;
-                showSaveScorePrompt();
+                terminateGame();
             }
 
             // Trigger screenshake on hit
@@ -526,7 +524,7 @@ public class GamePanel extends JPanel implements Runnable {
         }
 
         if (paused) return;
-        if (isTryLost) {
+        if (isTryLost || isLifeLost) {
             if (keyH.restartPressed) {
                 keyH.restartPressed = false;
                 restartGame();
@@ -714,11 +712,12 @@ public class GamePanel extends JPanel implements Runnable {
             if(e != null) e.update(player.x, player.y);
         }
 
-        if(checkPlayerHit()) {
+        if(invincibilityFrames <= 0 && checkPlayerHit()) {
             if (isBossLevel) {
                 bossHitPlayer(); // special instant no-reset damage
             } else {
                 lives--;
+                invincibilityFrames = 60; 
                 levelsClearedInRow = 0; // Reset streak on death
                 if(lives <= 0) {
                     terminateGame();
