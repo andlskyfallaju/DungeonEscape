@@ -185,13 +185,17 @@ public class GamePanel extends JPanel implements Runnable {
         }
 
         // --- NEW: Status Check (Moved to top for checkpoint accuracy) ---
-        isBossLevel = (currentMode == GameMode.ESCAPE && (level % 5 == 0));
+        isBossLevel = (level % 5 == 0);
         level10Phase = (level == 10) ? 1 : 0;
 
         // --- NEW: Entrance Checkpoint ---
-        if (isBossLevel || level == 10) {
+        if (currentMode == GameMode.CASUAL || isBossLevel || level == 10) {
             saveCheckpointState();
+            checkpointLevel = level;
+            checkpointLevel10Phase = level10Phase;
         }
+        
+        if (level == 10) isBossLevel = true; // Level 10 is always a boss level arena start
 
         // Reset state for items
         coins.clear();
