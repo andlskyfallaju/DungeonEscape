@@ -436,7 +436,7 @@ public class GamePanel extends JPanel implements Runnable {
     }
 
     private void terminateGame() {
-        if (currentMode == GameMode.ESCAPE && triesRemaining > 1) {
+        if (triesRemaining > 1) {
             triesRemaining--;
             isTryLost = true;
             return;
