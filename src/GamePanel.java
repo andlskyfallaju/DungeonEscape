@@ -186,7 +186,7 @@ public class GamePanel extends JPanel implements Runnable {
 
         // --- NEW: Status Check (Moved to top for checkpoint accuracy) ---
         isBossLevel = (currentMode == GameMode.ESCAPE && (level % 5 == 0));
-        level10Phase = (level == 10) ? 1 : 0;
+        level10Phase = (currentMode == GameMode.ESCAPE && level == 10) ? 1 : 0;
 
         // --- Entrance Checkpoint (Escape Mode Only) ---
         if (currentMode == GameMode.ESCAPE && (isBossLevel || level == 10)) {
