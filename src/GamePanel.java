@@ -185,17 +185,15 @@ public class GamePanel extends JPanel implements Runnable {
         }
 
         // --- NEW: Status Check (Moved to top for checkpoint accuracy) ---
-        isBossLevel = (level % 5 == 0);
+        isBossLevel = (currentMode == GameMode.ESCAPE && (level % 5 == 0));
         level10Phase = (level == 10) ? 1 : 0;
 
-        // --- NEW: Entrance Checkpoint ---
-        if (currentMode == GameMode.CASUAL || isBossLevel || level == 10) {
+        // --- Entrance Checkpoint (Escape Mode Only) ---
+        if (currentMode == GameMode.ESCAPE && (isBossLevel || level == 10)) {
             saveCheckpointState();
             checkpointLevel = level;
             checkpointLevel10Phase = level10Phase;
         }
-        
-        if (level == 10) isBossLevel = true; // Level 10 is always a boss level arena start
 
         // Reset state for items
         coins.clear();
@@ -404,6 +402,8 @@ public class GamePanel extends JPanel implements Runnable {
             invincibilityFrames = 60; // 1 second invulnerability
             if (lives <= 0) {
                 terminateGame();
+            } else {
+                isLifeLost = true; // Consistent with regular enemies
             }
 
             // Trigger screenshake on hit
@@ -539,15 +539,6 @@ public class GamePanel extends JPanel implements Runnable {
         // Handle Invincibility
         if (invincibilityFrames > 0) {
             invincibilityFrames--;
-        }
-
-        if (isLifeLost) {
-            if (keyH.restartPressed) {
-                keyH.restartPressed = false;
-                loadLevelState();
-                isLifeLost = false;
-            }
-            return;
         }
 
         // Handle Slow Power-up timer
