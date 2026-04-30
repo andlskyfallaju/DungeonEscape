@@ -771,6 +771,10 @@ public class GamePanel extends JPanel implements Runnable {
                 generateLevel();
             }
             return;
+        } else if (isLifeLost) {
+            isLifeLost = false;
+            loadLevelState();
+            return;
         }
 
         score = 0;
