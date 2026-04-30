@@ -721,7 +721,7 @@ public class GamePanel extends JPanel implements Runnable {
             }
         }
 
-        if(level != 10 && playerReachedExit()) {
+        if(!(currentMode == GameMode.ESCAPE && level == 10) && playerReachedExit()) {
             level++;
             score += 100;
 
