@@ -130,8 +130,8 @@ public class GamePanel extends JPanel implements Runnable {
                 }
 
                 if (paused && !showTutorial) {
-                    int logicalWidth = maxScreenCol * tileSize;
-                    int logicalHeight = maxScreenRow * tileSize;
+                    int logicalWidth = 20 * tileSize;
+                    int logicalHeight = 15 * tileSize;
                     double scaleX = (double)getWidth() / logicalWidth;
                     double scaleY = (double)getHeight() / logicalHeight;
                     double scaleFactor = Math.min(scaleX, scaleY);
